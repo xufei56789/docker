@@ -1,0 +1,57 @@
+version: '3.7'
+services:
+  mysql:
+    image: mysql:5.7.25
+    #image: mysql:5.7
+    volumes:
+      - ./service/mysql/config/mysqld.cnf:/etc/mysql/conf.d/mysql.cnf:ro
+      - ./service/mysql/data:/var/lib/mysql/:rw
+      - ./service/mysql/log/:/var/log/mysql/:rw
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+  php-fpm-5-6:
+    build: ./service/php5.6
+    volumes:
+      - ./www/:/var/www/html/
+      - ./service/php5.6/config/php5.6/:/usr/local/etc/php/
+      - ./service/php5.6/zend:/var/zend/:rw
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      - mysql
+    links:
+      - mysql:mysql
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./www/:/usr/share/nginx/html/:rw
+      - ./service/nginx/config:/etc/nginx/conf.d/
+      - ./service/nginx/log/:/var/log/nginx/:rw
+    depends_on:
+      - php-fpm-5-6
+    links:
+      - php-fpm-5-6:php-fpm-5-6
+  vue:
+    image: vuejs/ci
+    tty: true
+    restart: always
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./www/:/var/www/html/
+    working_dir: /var/www/html/
+  redis:
+    build: ./service/redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./service/redis/config/:/usr/local/etc/redis/
+    depends_on:
+      - php-fpm-5-6
+    links:
+      - php-fpm-5-6:php-fpm-5-6
